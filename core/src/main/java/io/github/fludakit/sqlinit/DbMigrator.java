@@ -6,9 +6,6 @@ import io.github.fludakit.sqlinit.resource.ResourceResolverRegistry;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.Reader;
-import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -192,9 +189,8 @@ public final class DbMigrator {
 
     private void executeScript(Connection connection, Migration migration) throws SQLException {
         List<String> statements;
-        try (InputStream in = migration.resource().getInputStream();
-             Reader reader = new InputStreamReader(in, StandardCharsets.UTF_8)) {
-            statements = SqlScriptParser.parse(reader, config.separator());
+        try (InputStream in = migration.resource().getInputStream()) {
+            statements = SqlScriptParser.parse(in, config.separator());
         } catch (IOException e) {
             throw new SQLException("Failed to read SQL script: " + migration.script(), e);
         }

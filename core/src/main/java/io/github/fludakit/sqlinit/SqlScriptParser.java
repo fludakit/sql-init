@@ -1,8 +1,8 @@
 package io.github.fludakit.sqlinit;
 
 import java.io.IOException;
-import java.io.Reader;
-import java.io.StringWriter;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
@@ -28,21 +28,21 @@ public final class SqlScriptParser {
     /**
      * Reads a script and returns the statements it declares, in script order.
      *
-     * @param source    the script content, not closed by this method
+     * @param source    the script content
      * @param separator the initial statement separator
      * @return the statements, without their trailing separator and without comments
      * @throws SQLException if the script cannot be read, a quote is left unbalanced, a block
      *                      comment is left unterminated, or a {@code DELIMITER} line has no value
      */
-    public static List<String> parse(Reader source, String separator) throws SQLException {
+    public static List<String> parse(InputStream source, String separator) throws SQLException {
         requireSeparator(separator);
-        StringWriter content = new StringWriter();
+        String content;
         try {
-            source.transferTo(content);
+            content = new String(source.readAllBytes(), StandardCharsets.UTF_8);
         } catch (IOException e) {
             throw new SQLException("Failed to read the SQL script", e);
         }
-        return parse(content.toString(), separator);
+        return parse(content, separator);
     }
 
     /**
