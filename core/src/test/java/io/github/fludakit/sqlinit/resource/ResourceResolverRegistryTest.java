@@ -28,27 +28,27 @@ class ResourceResolverRegistryTest {
     private final ResourceResolverRegistry registry = new ResourceResolverRegistry();
 
     @Test
-    void resolvesAClasspathDirectoryRecursively() throws IOException {
+    void resolvesAClasspathDirectoryRecursively() {
         List<Resource> resources = registry.getResources("classpath:db/migration");
         assertEquals(List.of("V1__create.sql", "V2__second.sql", "V3__third.sql", "readme.txt"),
                 resources.stream().map(Resource::getFilename).toList());
     }
 
     @Test
-    void resolvesAClasspathPattern() throws IOException {
+    void resolvesAClasspathPattern() {
         List<Resource> resources = registry.getResources("classpath:db/migration/**/*.sql");
         assertEquals(List.of("V1__create.sql", "V2__second.sql", "V3__third.sql"),
                 resources.stream().map(Resource::getFilename).toList());
     }
 
     @Test
-    void resolvesALiteralClasspathFile() throws IOException {
+    void resolvesALiteralClasspathFile() {
         List<Resource> resources = registry.getResources("classpath:db/migration/V1__create.sql");
         assertEquals(List.of("V1__create.sql"), resources.stream().map(Resource::getFilename).toList());
     }
 
     @Test
-    void returnsEmptyWhenALiteralLocationIsMissing() throws IOException {
+    void returnsEmptyWhenALiteralLocationIsMissing() {
         assertTrue(registry.getResources("classpath:db/nope.sql").isEmpty());
     }
 

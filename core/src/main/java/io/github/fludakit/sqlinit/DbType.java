@@ -1,6 +1,5 @@
 package io.github.fludakit.sqlinit;
 
-import java.sql.SQLException;
 import java.util.Locale;
 
 /**
@@ -47,17 +46,17 @@ public enum DbType {
     /**
      * Detects the database type from the JDBC product name and, failing that, the JDBC URL.
      *
-     * @throws SQLException if the type cannot be determined
+     * @throws SqlInitException if the type cannot be determined
      */
-    public static DbType detect(String productName, String jdbcUrl) throws SQLException {
+    public static DbType detect(String productName, String jdbcUrl) {
         DbType detected = detectByProductName(productName);
         if (detected == null && jdbcUrl != null) {
             detected = detectByJdbcUrl(jdbcUrl);
         }
         if (detected == null) {
-            throw new SQLException("Cannot detect the database type from product name '"
+            throw new SqlInitException("Cannot detect the database type from product name '"
                     + productName + "' and JDBC URL '" + jdbcUrl
-                    + "'; set jdbcclient.init.db-type explicitly");
+                    + "'; set fluda.sqlinit.db-type explicitly");
         }
         return detected;
     }

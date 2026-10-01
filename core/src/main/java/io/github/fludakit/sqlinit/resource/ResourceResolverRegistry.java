@@ -1,6 +1,5 @@
 package io.github.fludakit.sqlinit.resource;
 
-import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -37,7 +36,7 @@ public class ResourceResolverRegistry implements ResourceResolver {
     }
 
     @Override
-    public List<Resource> getResources(String locationPattern) throws IOException {
+    public List<Resource> getResources(String locationPattern) {
         String protocol = protocol(locationPattern);
         return resolvers.get(protocol).getResources(stripProtocol(locationPattern, protocol));
     }

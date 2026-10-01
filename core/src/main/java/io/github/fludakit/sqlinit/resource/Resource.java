@@ -1,6 +1,5 @@
 package io.github.fludakit.sqlinit.resource;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 
@@ -9,13 +8,13 @@ import java.net.URL;
  */
 public interface Resource {
 
-    InputStream getInputStream() throws IOException;
+    InputStream getInputStream();
 
     boolean exists();
 
-    long contentLength() throws IOException;
+    long contentLength();
 
-    URL getURL() throws IOException;
+    URL getURL();
 
     /** The filename (last path segment) of this resource, or {@code null} if it has none. */
     String getFilename();

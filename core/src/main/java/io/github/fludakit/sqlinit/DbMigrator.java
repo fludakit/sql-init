@@ -3,8 +3,8 @@ package io.github.fludakit.sqlinit;
 import io.github.fludakit.sqlinit.resource.Resource;
 import io.github.fludakit.sqlinit.resource.ResourceResolver;
 import io.github.fludakit.sqlinit.resource.ResourceResolverRegistry;
+import io.github.fludakit.sqlinit.version.VersionStrategy;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -30,7 +30,7 @@ import javax.sql.DataSource;
 public final class DbMigrator {
 
     private static final Logger LOGGER = Logger.getLogger(DbMigrator.class.getName());
-    private static final Pattern MIGRATION_NAME = Pattern.compile("V(\\d+)__(.+)\\.sql");
+    private static final Pattern MIGRATION_NAME = Pattern.compile("V([^_]+)__(.+)\\.sql");
 
     private final DataSource dataSource;
     private final SqlInitConfig config;
@@ -53,62 +53,53 @@ public final class DbMigrator {
     /**
      * Resolves the configured scripts and applies the migrations that have not run yet.
      *
-     * @throws SQLException if a script cannot be located, read, parsed, or executed, or if the
-     *                      history table holds a {@code failed} or leftover {@code running} row
+     * @throws SqlInitException if any error occurs during migration
      */
-    public void migrate() throws SQLException {
-        List<Migration> migrations = resolve();
-        if (migrations.isEmpty()) {
-            LOGGER.info("No SQL migrations resolved, skipping database migration");
-            return;
-        }
-
-        try (Connection connection = dataSource.getConnection()) {
-            connection.setAutoCommit(true);
-            MigrationHistory history = new MigrationHistory(connection, dbType(connection));
-            history.ensureTable();
-
-            Map<Integer, MigrationHistory.Status> applied = history.applied();
-            int nextVersion = nextVersion(applied);
-
-            int appliedCount = 0;
-            for (Migration migration : migrations) {
-                MigrationHistory.Status status = applied.get(migration.version());
-                if (status == MigrationHistory.Status.SUCCEEDED) {
-                    LOGGER.fine(() -> "Skipping already applied migration: " + migration.script());
-                    continue;
-                }
-                if (migration.version() != nextVersion) {
-                    throw new SQLException("Expected migration V" + nextVersion + " but found V"
-                            + migration.version() + " (" + migration.script()
-                            + "); a migration is missing or out of order");
-                }
-                runMigration(connection, history, migration, status != null);
-                nextVersion++;
-                appliedCount++;
+    public void migrate() {
+        try {
+            List<Migration> migrations = resolve();
+            if (migrations.isEmpty()) {
+                LOGGER.info("No SQL migrations resolved, skipping database migration");
+                return;
             }
-            int count = appliedCount;
-            LOGGER.info(() -> "Database migration completed, applied " + count + " migration(s)");
+
+            try (Connection connection = dataSource.getConnection()) {
+                connection.setAutoCommit(true);
+                MigrationHistory history = new MigrationHistory(connection, dbType(connection));
+                history.ensureTable();
+
+                Map<String, MigrationHistory.Status> applied = history.applied();
+                int appliedCount = 0;
+                for (Migration migration : migrations) {
+                    MigrationHistory.Status status = applied.get(migration.version());
+                    if (status == MigrationHistory.Status.SUCCEEDED) {
+                        LOGGER.fine(() -> "Skipping already applied migration: " + migration.script());
+                        continue;
+                    }
+                    runMigration(connection, history, migration, status != null);
+                    appliedCount++;
+                }
+                int count = appliedCount;
+                LOGGER.info(() -> "Database migration completed, applied " + count + " migration(s)");
+            }
+        } catch (SqlInitException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new SqlInitException("Database migration failed", e);
         }
     }
 
-    private List<Migration> resolve() throws SQLException {
-        ResourceResolver resolver = resourceResolver;
+    private List<Migration> resolve() {
         Map<String, Resource> byFilename = new LinkedHashMap<>();
         for (String location : config.scriptLocations()) {
-            List<Resource> found;
-            try {
-                found = resolver.getResources(location);
-            } catch (IOException e) {
-                throw new SQLException("Failed to resolve SQL script location: " + location, e);
-            }
+            List<Resource> found = resourceResolver.getResources(location);
             for (Resource resource : found) {
                 byFilename.putIfAbsent(resource.getFilename(), resource);
             }
         }
         List<Resource> resources = new ArrayList<>(byFilename.values());
-        resources.sort(Comparator.comparing(Resource::getFilename));
 
+        VersionStrategy strategy = config.versionStrategy();
         List<Migration> migrations = new ArrayList<>();
         for (Resource resource : resources) {
             Matcher matcher = MIGRATION_NAME.matcher(resource.getFilename());
@@ -117,98 +108,97 @@ public final class DbMigrator {
                         + resource.getFilename());
                 continue;
             }
-            int version = Integer.parseInt(matcher.group(1));
+            String version = strategy.parse(matcher.group(1));
             String description = matcher.group(2);
             migrations.add(new Migration(version, description, resource));
         }
-        migrations.sort(Comparator.comparingInt(Migration::version));
+        migrations.sort((m1, m2) -> strategy.compare(m1.version(), m2.version()));
         for (int i = 1; i < migrations.size(); i++) {
-            if (migrations.get(i).version() == migrations.get(i - 1).version()) {
-                throw new SQLException("Duplicate migration version " + migrations.get(i).version()
+            if (migrations.get(i).version().equals(migrations.get(i - 1).version())) {
+                throw new SqlInitException("Duplicate migration version " + migrations.get(i).version()
                         + ": " + migrations.get(i - 1).script() + " and " + migrations.get(i).script());
             }
         }
         return migrations;
     }
 
-    private DbType dbType(Connection connection) throws SQLException {
+    private DbType dbType(Connection connection) {
         if (config.dbType() != null) {
-            try {
-                return DbType.fromName(config.dbType());
-            } catch (IllegalArgumentException e) {
-                throw new SQLException(e.getMessage(), e);
-            }
+            return DbType.fromName(config.dbType());
         }
-        return DbType.detect(connection.getMetaData().getDatabaseProductName(),
-                connection.getMetaData().getURL());
+        try {
+            return DbType.detect(connection.getMetaData().getDatabaseProductName(),
+                    connection.getMetaData().getURL());
+        } catch (SQLException e) {
+            throw new SqlInitException("Failed to detect database type", e);
+        }
     }
 
-    private int nextVersion(Map<Integer, MigrationHistory.Status> applied) {
-        int next = 1;
-        for (Map.Entry<Integer, MigrationHistory.Status> entry : applied.entrySet()) {
-            if (entry.getValue() == MigrationHistory.Status.SUCCEEDED) {
-                next = Math.max(next, entry.getKey() + 1);
-            }
-        }
-        return next;
-    }
-
-    private void runMigration(Connection connection, MigrationHistory history, Migration migration, boolean retry)
-            throws SQLException {
+    private void runMigration(Connection connection, MigrationHistory history, Migration migration, boolean retry) {
         LOGGER.info(() -> "Applying migration: " + migration.script());
 
-        connection.setAutoCommit(true);
-        if (retry) {
-            history.markRunning(migration.version());
-        } else {
-            history.insertRunning(migration);
-        }
-
-        connection.setAutoCommit(false);
-        SQLException failure = null;
         try {
-            executeScript(connection, migration);
-            connection.commit();
-        } catch (SQLException e) {
-            rollbackQuietly(connection, e);
-            failure = e;
-        }
+            connection.setAutoCommit(true);
+            if (retry) {
+                history.markRunning(migration.version());
+            } else {
+                history.insertRunning(migration);
+            }
 
-        connection.setAutoCommit(true);
-
-        if (failure != null) {
+            connection.setAutoCommit(false);
             try {
-                history.markFailed(migration.version(), truncate(failure.getMessage()));
-            } catch (SQLException markFailure) {
-                failure.addSuppressed(markFailure);
+                executeScript(connection, migration);
+                connection.commit();
+            } catch (SqlInitException e) {
+                rollbackQuietly(connection);
+                connection.setAutoCommit(true);
+                markFailed(history, migration, e);
+                throw e;
+            } catch (Exception e) {
+                rollbackQuietly(connection);
+                connection.setAutoCommit(true);
+                SqlInitException wrapped = new SqlInitException("Failed to execute SQL script: " + migration.script(), e);
+                markFailed(history, migration, wrapped);
+                throw wrapped;
             }
-            throw failure;
-        }
-        history.markSucceeded(migration.version());
-    }
 
-    private void executeScript(Connection connection, Migration migration) throws SQLException {
-        List<String> statements;
-        try (InputStream in = migration.resource().getInputStream()) {
-            statements = SqlScriptParser.parse(in, config.separator());
-        } catch (IOException e) {
-            throw new SQLException("Failed to read SQL script: " + migration.script(), e);
-        }
-        try (Statement statement = connection.createStatement()) {
-            for (String sql : statements) {
-                statement.execute(sql);
-            }
+            connection.setAutoCommit(true);
+            history.markSucceeded(migration.version());
+        } catch (SqlInitException e) {
+            throw e;
         } catch (SQLException e) {
-            throw new SQLException("Failed to execute SQL script: " + migration.script(),
-                    e.getSQLState(), e.getErrorCode(), e);
+            throw new SqlInitException("Migration transaction failed: " + migration.script(), e);
         }
     }
 
-    private void rollbackQuietly(Connection connection, SQLException failure) {
+    private void markFailed(MigrationHistory history, Migration migration, Exception failure) {
+        try {
+            history.markFailed(migration.version(), truncate(failure.getMessage()));
+        } catch (Exception markFailure) {
+            failure.addSuppressed(markFailure);
+        }
+    }
+
+    private void executeScript(Connection connection, Migration migration) {
+        try (InputStream in = migration.resource().getInputStream()) {
+            List<String> statements = SqlScriptParser.parse(in, config.separator());
+            try (Statement statement = connection.createStatement()) {
+                for (String sql : statements) {
+                    statement.execute(sql);
+                }
+            }
+        } catch (SqlInitException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new SqlInitException("Failed to execute SQL script: " + migration.script(), e);
+        }
+    }
+
+    private void rollbackQuietly(Connection connection) {
         try {
             connection.rollback();
         } catch (SQLException e) {
-            failure.addSuppressed(e);
+            // ignored
         }
     }
 

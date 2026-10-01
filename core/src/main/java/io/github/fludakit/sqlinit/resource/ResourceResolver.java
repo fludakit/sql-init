@@ -1,6 +1,5 @@
 package io.github.fludakit.sqlinit.resource;
 
-import java.io.IOException;
 import java.util.List;
 
 /**
@@ -26,5 +25,5 @@ public interface ResourceResolver {
      * Resolves a location pattern (literal file, directory, or Ant-style pattern) into the resources
      * it matches, sorted by filename.
      */
-    List<Resource> getResources(String locationPattern) throws IOException;
+    List<Resource> getResources(String locationPattern);
 }

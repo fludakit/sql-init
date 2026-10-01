@@ -18,28 +18,34 @@ public class UrlResource implements Resource {
     }
 
     @Override
-    public InputStream getInputStream() throws IOException {
-        URLConnection connection = url.openConnection();
-        if (connection instanceof JarURLConnection jarConnection) {
-            // The JDK jar cache would keep the archive open for the lifetime of the JVM.
-            jarConnection.setUseCaches(false);
+    public InputStream getInputStream() {
+        try {
+            URLConnection connection = url.openConnection();
+            if (connection instanceof JarURLConnection jarConnection) {
+                jarConnection.setUseCaches(false);
+            }
+            return connection.getInputStream();
+        } catch (IOException e) {
+            throw new ResourceException("Failed to open URL resource: " + url, e);
         }
-        return connection.getInputStream();
     }
 
     @Override
     public boolean exists() {
-        // The URL was already resolved when this resource was built.
         return true;
     }
 
     @Override
-    public long contentLength() throws IOException {
-        URLConnection connection = url.openConnection();
-        if (connection instanceof JarURLConnection jarConnection) {
-            jarConnection.setUseCaches(false);
+    public long contentLength() {
+        try {
+            URLConnection connection = url.openConnection();
+            if (connection instanceof JarURLConnection jarConnection) {
+                jarConnection.setUseCaches(false);
+            }
+            return connection.getContentLengthLong();
+        } catch (IOException e) {
+            throw new ResourceException("Failed to read content length for URL: " + url, e);
         }
-        return connection.getContentLengthLong();
     }
 
     @Override

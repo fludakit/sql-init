@@ -1,6 +1,5 @@
 package io.github.fludakit.sqlinit.resource;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.JarURLConnection;
@@ -21,12 +20,16 @@ public class ClassPathResource implements Resource {
     }
 
     @Override
-    public InputStream getInputStream() throws IOException {
-        URLConnection connection = url().openConnection();
-        if (connection instanceof JarURLConnection jarConnection) {
-            jarConnection.setUseCaches(false);
+    public InputStream getInputStream() {
+        try {
+            URLConnection connection = url().openConnection();
+            if (connection instanceof JarURLConnection jarConnection) {
+                jarConnection.setUseCaches(false);
+            }
+            return connection.getInputStream();
+        } catch (IOException e) {
+            throw new ResourceException("Failed to open classpath resource: " + path, e);
         }
-        return connection.getInputStream();
     }
 
     @Override
@@ -35,16 +38,20 @@ public class ClassPathResource implements Resource {
     }
 
     @Override
-    public long contentLength() throws IOException {
-        URLConnection connection = url().openConnection();
-        if (connection instanceof JarURLConnection jarConnection) {
-            jarConnection.setUseCaches(false);
+    public long contentLength() {
+        try {
+            URLConnection connection = url().openConnection();
+            if (connection instanceof JarURLConnection jarConnection) {
+                jarConnection.setUseCaches(false);
+            }
+            return connection.getContentLengthLong();
+        } catch (IOException e) {
+            throw new ResourceException("Failed to read content length for: " + path, e);
         }
-        return connection.getContentLengthLong();
     }
 
     @Override
-    public URL getURL() throws IOException {
+    public URL getURL() {
         return url();
     }
 
@@ -55,9 +62,9 @@ public class ClassPathResource implements Resource {
         return slash < 0 ? normalized : normalized.substring(slash + 1);
     }
 
-    private URL url() throws IOException {
+    private URL url() {
         if (url == null) {
-            throw new FileNotFoundException("Classpath resource not found: " + path);
+            throw new ResourceException("Classpath resource not found: " + path);
         }
         return url;
     }

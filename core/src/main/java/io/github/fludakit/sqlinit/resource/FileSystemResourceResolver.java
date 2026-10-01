@@ -32,14 +32,14 @@ public class FileSystemResourceResolver implements ResourceResolver {
     }
 
     @Override
-    public List<Resource> getResources(String pattern) throws IOException {
+    public List<Resource> getResources(String pattern) {
         return resolveFilesystem(pattern);
     }
 
-    private List<Resource> resolveFilesystem(String path) throws IOException {
+    private List<Resource> resolveFilesystem(String path) {
         String normalized = path.replace('\\', '/');
         if (normalized.isEmpty()) {
-            throw new IOException("Empty filesystem resource location");
+            throw new IllegalArgumentException("Empty filesystem resource location");
         }
         Path file = Paths.get(normalized);
         if (pathMatcher.isPattern(normalized)) {
@@ -54,7 +54,7 @@ public class FileSystemResourceResolver implements ResourceResolver {
         return List.of();
     }
 
-    private List<Resource> scanFilesystemPattern(String pattern) throws IOException {
+    private List<Resource> scanFilesystemPattern(String pattern) {
         int rootEnd = wildcardRoot(pattern);
         if (rootEnd == 0) {
             return List.of();
@@ -69,7 +69,7 @@ public class FileSystemResourceResolver implements ResourceResolver {
         return scanFilesystem(root, relativePattern);
     }
 
-    private List<Resource> scanFilesystem(Path root, String relativePattern) throws IOException {
+    private List<Resource> scanFilesystem(Path root, String relativePattern) {
         List<Resource> resources = new ArrayList<>();
         try (Stream<Path> paths = Files.walk(root)) {
             paths.filter(Files::isRegularFile).forEach(file -> {
@@ -78,6 +78,8 @@ public class FileSystemResourceResolver implements ResourceResolver {
                     resources.add(new FileSystemResource(file));
                 }
             });
+        } catch (IOException e) {
+            throw new ResourceException("Failed to scan filesystem at: " + root, e);
         }
         resources.sort(Comparator.comparing(Resource::getFilename));
         return resources;

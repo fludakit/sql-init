@@ -1,5 +1,5 @@
 CREATE TABLE db_migrations (
-    version INT PRIMARY KEY,
+    version NVARCHAR(100) PRIMARY KEY,
     description NVARCHAR(200) NOT NULL,
     script NVARCHAR(500) NOT NULL,
     status NVARCHAR(16) NOT NULL,

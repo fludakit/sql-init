@@ -5,7 +5,6 @@ import io.github.fludakit.sqlinit.SqlInitConfig;
 import io.github.fludakit.sqlinit.resource.ResourceResolver;
 import io.github.fludakit.sqlinit.resource.ResourceResolverRegistry;
 
-import java.sql.SQLException;
 import java.util.logging.Logger;
 import javax.sql.DataSource;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -52,11 +51,7 @@ public class SqlInitBootstrapper {
             return;
         }
         SqlInitConfig config = configs.isResolvable() ? configs.get() : SqlInitConfig.defaults();
-        try {
-            new DbMigrator(ds, config, resourceResolver()).migrate();
-        } catch (SQLException e) {
-            throw new IllegalStateException("Failed to initialize the database from SQL scripts", e);
-        }
+        new DbMigrator(ds, config, resourceResolver()).migrate();
     }
 
     private DataSource resolveDataSource() {

@@ -18,8 +18,12 @@ public class FileSystemResource implements Resource {
     }
 
     @Override
-    public InputStream getInputStream() throws IOException {
-        return Files.newInputStream(path);
+    public InputStream getInputStream() {
+        try {
+            return Files.newInputStream(path);
+        } catch (IOException e) {
+            throw new ResourceException("Failed to open file: " + path, e);
+        }
     }
 
     @Override
@@ -28,13 +32,21 @@ public class FileSystemResource implements Resource {
     }
 
     @Override
-    public long contentLength() throws IOException {
-        return Files.size(path);
+    public long contentLength() {
+        try {
+            return Files.size(path);
+        } catch (IOException e) {
+            throw new ResourceException("Failed to read file size: " + path, e);
+        }
     }
 
     @Override
-    public URL getURL() throws IOException {
-        return path.toUri().toURL();
+    public URL getURL() {
+        try {
+            return path.toUri().toURL();
+        } catch (IOException e) {
+            throw new ResourceException("Failed to convert path to URL: " + path, e);
+        }
     }
 
     @Override

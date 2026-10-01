@@ -2,7 +2,7 @@ package io.github.fludakit.sqlinit;
 
 import org.junit.jupiter.api.Test;
 
-import java.sql.SQLException;
+import java.io.UncheckedIOException;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -12,46 +12,46 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class SqlScriptParserTest {
 
     @Test
-    void splitsOnTheDefaultSeparator() throws SQLException {
+    void splitsOnTheDefaultSeparator() {
         assertEquals(List.of("SELECT 1", "SELECT 2"), SqlScriptParser.parse("SELECT 1; SELECT 2;", ";"));
     }
 
     @Test
-    void emitsATrailingStatementWithoutASeparator() throws SQLException {
+    void emitsATrailingStatementWithoutASeparator() {
         assertEquals(List.of("SELECT 1"), SqlScriptParser.parse("SELECT 1", ";"));
     }
 
     @Test
-    void keepsASeparatorInsideAStringLiteral() throws SQLException {
+    void keepsASeparatorInsideAStringLiteral() {
         assertEquals(List.of("INSERT INTO t VALUES ('a;b')"), SqlScriptParser.parse("INSERT INTO t VALUES ('a;b');",
                 ";"));
     }
 
     @Test
-    void keepsASeparatorInsideAQuotedIdentifier() throws SQLException {
+    void keepsASeparatorInsideAQuotedIdentifier() {
         assertEquals(List.of("SELECT \"odd;name\" FROM t"), SqlScriptParser.parse("SELECT \"odd;name\" FROM t;", ";"));
         assertEquals(List.of("SELECT `odd;name` FROM t"), SqlScriptParser.parse("SELECT `odd;name` FROM t;", ";"));
     }
 
     @Test
-    void keepsEscapedQuotesInsideAStringLiteral() throws SQLException {
+    void keepsEscapedQuotesInsideAStringLiteral() {
         assertEquals(List.of("SELECT 'it''s'"), SqlScriptParser.parse("SELECT 'it''s';", ";"));
         assertEquals(List.of("SELECT 'a\\'b'"), SqlScriptParser.parse("SELECT 'a\\'b';", ";"));
         assertEquals(List.of("SELECT 'back\\\\slash'"), SqlScriptParser.parse("SELECT 'back\\\\slash';", ";"));
     }
 
     @Test
-    void honoursACustomSeparator() throws SQLException {
+    void honoursACustomSeparator() {
         assertEquals(List.of("SELECT 1", "SELECT 2"), SqlScriptParser.parse("SELECT 1\n/\nSELECT 2\n/", "/"));
     }
 
     @Test
-    void honoursAMultiCharacterSeparator() throws SQLException {
+    void honoursAMultiCharacterSeparator() {
         assertEquals(List.of("SELECT 1", "SELECT 2"), SqlScriptParser.parse("SELECT 1//SELECT 2//", "//"));
     }
 
     @Test
-    void stripsLineComments() throws SQLException {
+    void stripsLineComments() {
         String script = """
                 -- a leading comment
                 SELECT 1; -- a trailing comment
@@ -62,22 +62,22 @@ class SqlScriptParserTest {
     }
 
     @Test
-    void treatsDashesWithoutTrailingWhitespaceAsOperators() throws SQLException {
+    void treatsDashesWithoutTrailingWhitespaceAsOperators() {
         assertEquals(List.of("SELECT a--1 FROM t"), SqlScriptParser.parse("SELECT a--1 FROM t;", ";"));
     }
 
     @Test
-    void stripsNestedBlockComments() throws SQLException {
+    void stripsNestedBlockComments() {
         assertEquals(List.of("SELECT 1"), SqlScriptParser.parse("/* outer /* inner */ still outer */ SELECT 1;", ";"));
     }
 
     @Test
-    void ignoresBlankAndCommentOnlyScripts() throws SQLException {
+    void ignoresBlankAndCommentOnlyScripts() {
         assertTrue(SqlScriptParser.parse("-- nothing\n\n/* nope */\n", ";").isEmpty());
     }
 
     @Test
-    void switchesSeparatorOnADelimiterDirective() throws SQLException {
+    void switchesSeparatorOnADelimiterDirective() {
         String script = """
                 DELIMITER //
                 CREATE PROCEDURE p() BEGIN INSERT INTO t VALUES (1); INSERT INTO t VALUES (2); END//
@@ -92,30 +92,30 @@ class SqlScriptParserTest {
     }
 
     @Test
-    void ignoresADelimiterDirectiveInTheMiddleOfAStatement() throws SQLException {
+    void ignoresADelimiterDirectiveInTheMiddleOfAStatement() {
         assertEquals(List.of("SELECT 'DELIMITER x'"), SqlScriptParser.parse("SELECT 'DELIMITER x';", ";"));
     }
 
     @Test
     void rejectsAnEmptySeparator() {
-        assertThrows(SQLException.class, () -> SqlScriptParser.parse("SELECT 1", ""));
-        assertThrows(SQLException.class, () -> SqlScriptParser.parse("SELECT 1", null));
+        assertThrows(IllegalArgumentException.class, () -> SqlScriptParser.parse("SELECT 1", ""));
+        assertThrows(IllegalArgumentException.class, () -> SqlScriptParser.parse("SELECT 1", null));
     }
 
     @Test
     void rejectsAnUnbalancedQuote() {
-        SQLException e = assertThrows(SQLException.class, () -> SqlScriptParser.parse("SELECT 'abc", ";"));
+        IllegalArgumentException e = assertThrows(IllegalArgumentException.class, () -> SqlScriptParser.parse("SELECT 'abc", ";"));
         assertTrue(e.getMessage().contains("Unbalanced"));
     }
 
     @Test
     void rejectsAnUnterminatedBlockComment() {
-        SQLException e = assertThrows(SQLException.class, () -> SqlScriptParser.parse("SELECT 1 /* oops", ";"));
+        IllegalArgumentException e = assertThrows(IllegalArgumentException.class, () -> SqlScriptParser.parse("SELECT 1 /* oops", ";"));
         assertTrue(e.getMessage().contains("Unterminated"));
     }
 
     @Test
     void rejectsADelimiterDirectiveWithoutAValue() {
-        assertThrows(SQLException.class, () -> SqlScriptParser.parse("DELIMITER\nSELECT 1;", ";"));
+        assertThrows(IllegalArgumentException.class, () -> SqlScriptParser.parse("DELIMITER\nSELECT 1;", ";"));
     }
 }

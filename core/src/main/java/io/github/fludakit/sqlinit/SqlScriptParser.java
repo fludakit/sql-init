@@ -2,8 +2,8 @@ package io.github.fludakit.sqlinit;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -31,18 +31,18 @@ public final class SqlScriptParser {
      * @param source    the script content
      * @param separator the initial statement separator
      * @return the statements, without their trailing separator and without comments
-     * @throws SQLException if the script cannot be read, a quote is left unbalanced, a block
-     *                      comment is left unterminated, or a {@code DELIMITER} line has no value
+     * @throws UncheckedIOException       if the script cannot be read
+     * @throws IllegalArgumentException   if a quote is left unbalanced, a block comment is left
+     *                                    unterminated, or a {@code DELIMITER} line has no value
      */
-    public static List<String> parse(InputStream source, String separator) throws SQLException {
+    public static List<String> parse(InputStream source, String separator) {
         requireSeparator(separator);
-        String content;
         try {
-            content = new String(source.readAllBytes(), StandardCharsets.UTF_8);
+            String content = new String(source.readAllBytes(), StandardCharsets.UTF_8);
+            return parse(content, separator);
         } catch (IOException e) {
-            throw new SQLException("Failed to read the SQL script", e);
+            throw new UncheckedIOException("Failed to read the SQL script", e);
         }
-        return parse(content, separator);
     }
 
     /**
@@ -51,10 +51,10 @@ public final class SqlScriptParser {
      * @param script    the script content
      * @param separator the initial statement separator
      * @return the statements, without their trailing separator and without comments
-     * @throws SQLException if a quote is left unbalanced, a block comment is left unterminated, or
-     *                      a {@code DELIMITER} line has no value
+     * @throws IllegalArgumentException if a quote is left unbalanced, a block comment is left
+     *                                  unterminated, or a {@code DELIMITER} line has no value
      */
-    static List<String> parse(String script, String separator) throws SQLException {
+    static List<String> parse(String script, String separator) {
         requireSeparator(separator);
 
         List<String> statements = new ArrayList<>();
@@ -138,7 +138,7 @@ public final class SqlScriptParser {
                 int endOfLine = endOfLine(script, i);
                 String value = script.substring(i + DELIMITER.length(), endOfLine).trim();
                 if (value.isEmpty()) {
-                    throw new SQLException("The DELIMITER directive requires a separator value");
+                    throw new IllegalArgumentException("The DELIMITER directive requires a separator value");
                 }
                 activeSeparator = value;
                 i = endOfLine;
@@ -162,18 +162,18 @@ public final class SqlScriptParser {
         }
 
         if (quote != 0) {
-            throw new SQLException("Unbalanced " + quote + " quote in the SQL script");
+            throw new IllegalArgumentException("Unbalanced " + quote + " quote in the SQL script");
         }
         if (blockCommentDepth > 0) {
-            throw new SQLException("Unterminated block comment in the SQL script");
+            throw new IllegalArgumentException("Unterminated block comment in the SQL script");
         }
         addStatement(statements, statement);
         return statements;
     }
 
-    private static void requireSeparator(String separator) throws SQLException {
+    private static void requireSeparator(String separator) {
         if (separator == null || separator.isEmpty()) {
-            throw new SQLException("The SQL statement separator must not be null or empty");
+            throw new IllegalArgumentException("The SQL statement separator must not be null or empty");
         }
     }
 

@@ -49,6 +49,7 @@
                                     <exports>
                                         io.github.fludakit.sqlinit;
                                         io.github.fludakit.sqlinit.resource;
+                                        io.github.fludakit.sqlinit.version;
                                     </exports>
                                     <opens>
                                         io.github.fludakit.sqlinit;

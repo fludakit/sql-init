@@ -3,8 +3,6 @@ package io.github.fludakit.sqlinit;
 import io.github.fludakit.sqlinit.resource.ClassPathResource;
 import io.github.fludakit.sqlinit.resource.Resource;
 
-import java.io.IOException;
-import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
@@ -61,89 +59,105 @@ final class MigrationHistory {
         this.dbType = dbType;
     }
 
-    void ensureTable() throws SQLException {
+    void ensureTable() {
         if (!tableExists()) {
             try (var statement = connection.createStatement()) {
                 statement.execute(loadInitSql());
+            } catch (SQLException e) {
+                throw new SqlInitException("Failed to create migration history table", e);
             }
         }
     }
 
-    Map<Integer, Status> applied() throws SQLException {
-        Map<Integer, Status> applied = new LinkedHashMap<>();
+    Map<String, Status> applied() {
+        Map<String, Status> applied = new LinkedHashMap<>();
         try (var statement = connection.createStatement();
              ResultSet rows = statement.executeQuery(
-                     "SELECT version, status FROM " + TABLE_NAME + " ORDER BY version")) {
+                     "SELECT version, status FROM " + TABLE_NAME + " ORDER BY installed_on")) {
             while (rows.next()) {
-                applied.put(rows.getInt(1), Status.from(rows.getString(2)));
+                applied.put(rows.getString(1), Status.from(rows.getString(2)));
             }
+        } catch (SQLException e) {
+            throw new SqlInitException("Failed to query migration history", e);
         }
         return applied;
     }
 
-    void insertRunning(Migration migration) throws SQLException {
+    void insertRunning(Migration migration) {
         try (PreparedStatement statement = connection.prepareStatement(
                 "INSERT INTO " + TABLE_NAME
                         + " (version, description, script, status, installed_on) VALUES (?, ?, ?, ?, ?)")) {
-            statement.setInt(1, migration.version());
+            statement.setString(1, migration.version());
             statement.setString(2, migration.description());
             statement.setString(3, migration.script());
             statement.setString(4, Status.RUNNING.value());
             statement.setTimestamp(5, Timestamp.from(Instant.now()));
             statement.executeUpdate();
+        } catch (SQLException e) {
+            throw new SqlInitException("Failed to insert migration record", e);
         }
     }
 
-    void markRunning(int version) throws SQLException {
+    void markRunning(String version) {
         try (PreparedStatement statement = connection.prepareStatement(
                 "UPDATE " + TABLE_NAME + " SET status = ?, error_message = NULL WHERE version = ?")) {
             statement.setString(1, Status.RUNNING.value());
-            statement.setInt(2, version);
+            statement.setString(2, version);
             statement.executeUpdate();
+        } catch (SQLException e) {
+            throw new SqlInitException("Failed to mark migration as running", e);
         }
     }
 
-    void markSucceeded(int version) throws SQLException {
+    void markSucceeded(String version) {
         try (PreparedStatement statement = connection.prepareStatement(
                 "UPDATE " + TABLE_NAME + " SET status = ? WHERE version = ?")) {
             statement.setString(1, Status.SUCCEEDED.value());
-            statement.setInt(2, version);
+            statement.setString(2, version);
             statement.executeUpdate();
+        } catch (SQLException e) {
+            throw new SqlInitException("Failed to mark migration as succeeded", e);
         }
     }
 
-    void markFailed(int version, String errorMessage) throws SQLException {
+    void markFailed(String version, String errorMessage) {
         try (PreparedStatement statement = connection.prepareStatement(
                 "UPDATE " + TABLE_NAME + " SET status = ?, error_message = ? WHERE version = ?")) {
             statement.setString(1, Status.FAILED.value());
             statement.setString(2, errorMessage);
-            statement.setInt(3, version);
+            statement.setString(3, version);
             statement.executeUpdate();
+        } catch (SQLException e) {
+            throw new SqlInitException("Failed to mark migration as failed", e);
         }
     }
 
-    private boolean tableExists() throws SQLException {
-        DatabaseMetaData meta = connection.getMetaData();
-        try (ResultSet tables = meta.getTables(null, null, "%", new String[]{"TABLE"})) {
-            while (tables.next()) {
-                if (TABLE_NAME.equalsIgnoreCase(tables.getString("TABLE_NAME"))) {
-                    return true;
+    private boolean tableExists() {
+        try {
+            DatabaseMetaData meta = connection.getMetaData();
+            try (ResultSet tables = meta.getTables(null, null, "%", new String[]{"TABLE"})) {
+                while (tables.next()) {
+                    if (TABLE_NAME.equalsIgnoreCase(tables.getString("TABLE_NAME"))) {
+                        return true;
+                    }
                 }
             }
+        } catch (SQLException e) {
+            throw new SqlInitException("Failed to check if migration history table exists", e);
         }
         return false;
     }
 
-    private String loadInitSql() throws SQLException {
+    private String loadInitSql() {
         String name = dbType.initSqlResource();
         Resource resource = new ClassPathResource(name, DbType.class.getClassLoader());
         if (!resource.exists()) {
-            throw new SQLException("Missing sqlinit initialization resource: " + name);
+            throw new SqlInitException("Missing sqlinit initialization resource: " + name);
         }
-        try (InputStream in = resource.getInputStream()) {
+        try (var in = resource.getInputStream()) {
             return new String(in.readAllBytes(), StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            throw new SQLException("Failed to read sqlinit initialization resource: " + name, e);
+        } catch (Exception e) {
+            throw new SqlInitException("Failed to read sqlinit initialization resource: " + name, e);
         }
     }
 }

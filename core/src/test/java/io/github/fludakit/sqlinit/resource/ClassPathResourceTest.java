@@ -30,7 +30,7 @@ class ClassPathResourceTest {
         Resource resource = new ClassPathResource("db/does-not-exist.sql", classLoader);
 
         assertFalse(resource.exists());
-        assertThrows(IOException.class, resource::getURL);
-        assertThrows(IOException.class, resource::getInputStream);
+        assertThrows(ResourceException.class, resource::getURL);
+        assertThrows(ResourceException.class, resource::getInputStream);
     }
 }

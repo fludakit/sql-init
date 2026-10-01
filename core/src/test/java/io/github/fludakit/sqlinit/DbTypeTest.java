@@ -5,7 +5,6 @@ import org.junit.jupiter.api.Test;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.sql.SQLException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -33,7 +32,7 @@ class DbTypeTest {
     }
 
     @Test
-    void detectsByProductName() throws SQLException {
+    void detectsByProductName() {
         assertEquals(DbType.H2, DbType.detect("H2", null));
         assertEquals(DbType.POSTGRESQL, DbType.detect("PostgreSQL 15", null));
         assertEquals(DbType.MYSQL, DbType.detect("MariaDB", null));
@@ -42,7 +41,7 @@ class DbTypeTest {
     }
 
     @Test
-    void detectsByJdbcUrl() throws SQLException {
+    void detectsByJdbcUrl() {
         assertEquals(DbType.H2, DbType.detect("Something", "jdbc:h2:mem:test"));
         assertEquals(DbType.POSTGRESQL, DbType.detect("Something", "jdbc:postgresql://localhost/db"));
         assertEquals(DbType.MYSQL, DbType.detect("Something", "jdbc:mariadb://localhost/db"));
@@ -52,7 +51,7 @@ class DbTypeTest {
 
     @Test
     void failsWhenTypeIsUnknown() {
-        assertThrows(SQLException.class, () -> DbType.detect("SomeDB", "jdbc:unknowndb:x"));
+        assertThrows(SqlInitException.class, () -> DbType.detect("SomeDB", "jdbc:unknowndb:x"));
     }
 
     @Test

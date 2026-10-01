@@ -1,7 +1,6 @@
 package io.github.fludakit.sqlinit.resource;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.net.JarURLConnection;
 import java.net.MalformedURLException;
 import java.net.URI;
@@ -48,13 +47,13 @@ public class ClassPathResourceResolver implements ResourceResolver {
     }
 
     @Override
-    public List<Resource> getResources(String pattern) throws IOException {
+    public List<Resource> getResources(String pattern) {
         return resolveClasspath(ResourceUtils.stripLeadingSlash(pattern));
     }
 
-    private List<Resource> resolveClasspath(String path) throws IOException {
+    private List<Resource> resolveClasspath(String path) {
         if (path.isEmpty()) {
-            throw new IOException("Empty classpath resource location");
+            throw new IllegalArgumentException("Empty classpath resource location");
         }
         if (pathMatcher.isPattern(path)) {
             return scanClasspath(path);
@@ -85,7 +84,7 @@ public class ClassPathResourceResolver implements ResourceResolver {
         return false;
     }
 
-    private List<Resource> scanClasspath(String pattern) throws IOException {
+    private List<Resource> scanClasspath(String pattern) {
         int rootEnd = wildcardRoot(pattern);
         String root = pattern.substring(0, rootEnd);
         String entryPrefix = root.isEmpty() ? "" : root + "/";
@@ -97,8 +96,8 @@ public class ClassPathResourceResolver implements ResourceResolver {
             while (roots.hasMoreElements()) {
                 scanRoot(roots.nextElement(), entryPrefix, relativePattern, resources);
             }
-        } catch (URISyntaxException e) {
-            throw new IOException("Failed to scan the classpath for resources at: " + pattern, e);
+        } catch (IOException | URISyntaxException e) {
+            throw new ResourceException("Failed to scan the classpath for resources at: " + pattern, e);
         }
         resources.sort(Comparator.comparing(Resource::getFilename));
         return resources;
@@ -153,7 +152,7 @@ public class ClassPathResourceResolver implements ResourceResolver {
         try {
             return path.toUri().toURL();
         } catch (MalformedURLException e) {
-            throw new UncheckedIOException(e);
+            throw new ResourceException("Failed to convert path to URL: " + path, e);
         }
     }
 
