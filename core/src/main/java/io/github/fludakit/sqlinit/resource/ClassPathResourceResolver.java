@@ -93,8 +93,12 @@ public class ClassPathResourceResolver implements ResourceResolver {
         List<Resource> resources = new ArrayList<>();
         try {
             Enumeration<URL> roots = classLoader.getResources(root);
+            List<URL> rootList = new ArrayList<>();
             while (roots.hasMoreElements()) {
-                scanRoot(roots.nextElement(), entryPrefix, relativePattern, resources);
+                rootList.add(roots.nextElement());
+            }
+            for (URL rootUrl : rootList) {
+                scanRoot(rootUrl, entryPrefix, relativePattern, resources);
             }
         } catch (IOException | URISyntaxException e) {
             throw new ResourceException("Failed to scan the classpath for resources at: " + pattern, e);
@@ -108,7 +112,43 @@ public class ClassPathResourceResolver implements ResourceResolver {
         switch (rootUrl.getProtocol()) {
             case "file" -> scanDirectory(Paths.get(rootUrl.toURI()), relativePattern, resources);
             case "jar" -> scanJar(rootUrl, entryPrefix, relativePattern, resources);
+            case "vfs" -> scanVfsDirectory(rootUrl, relativePattern, resources);
             default -> { /* unsupported classpath root, skip */ }
+        }
+    }
+
+    private void scanVfsDirectory(URL rootUrl, String relativePattern, List<Resource> resources) throws IOException {
+        if (!isVfsPresent()) {
+            return;
+        }
+        try {
+            org.jboss.vfs.VirtualFile virtualFile = (org.jboss.vfs.VirtualFile) rootUrl.openConnection().getContent();
+            scanVfsVirtualFile(virtualFile, relativePattern, resources);
+        } catch (Exception e) {
+            throw new ResourceException("Failed to scan VFS directory: " + rootUrl, e);
+        }
+    }
+
+    private static boolean isVfsPresent() {
+        try {
+            Class.forName("org.jboss.vfs.VirtualFile");
+            return true;
+        } catch (ClassNotFoundException e) {
+            return false;
+        }
+    }
+
+    private void scanVfsVirtualFile(org.jboss.vfs.VirtualFile virtualFile, String relativePattern, List<Resource> resources) {
+        for (org.jboss.vfs.VirtualFile child : virtualFile.getChildren()) {
+            if (child.isFile() && pathMatcher.match(relativePattern, child.getName())) {
+                try {
+                    resources.add(new UrlResource(child.toURL()));
+                } catch (Exception e) {
+                    throw new ResourceException("Failed to convert VFS file to URL: " + child, e);
+                }
+            } else if (!child.isFile()) {
+                scanVfsVirtualFile(child, relativePattern, resources);
+            }
         }
     }
 
