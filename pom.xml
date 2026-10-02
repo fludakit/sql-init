@@ -51,7 +51,22 @@
 
     <dependencyManagement>
         <dependencies>
-            <!-- Module-specific dependencies can be added here -->
+            <!-- SQL Init modules -->
+            <dependency>
+                <groupId>io.github.fludakit</groupId>
+                <artifactId>fluda-sql-init-core</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.github.fludakit</groupId>
+                <artifactId>fluda-sql-init-config</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.github.fludakit</groupId>
+                <artifactId>fluda-sql-init-cdi</artifactId>
+                <version>${project.version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
