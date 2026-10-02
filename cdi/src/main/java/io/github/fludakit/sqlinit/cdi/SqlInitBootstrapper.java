@@ -7,11 +7,12 @@ import io.github.fludakit.sqlinit.resource.ResourceResolverRegistry;
 
 import java.util.logging.Logger;
 import javax.sql.DataSource;
+import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 import jakarta.enterprise.event.Startup;
-import jakarta.enterprise.inject.Instance;
-import jakarta.inject.Inject;
+import jakarta.enterprise.inject.spi.CDI;
+import jakarta.interceptor.Interceptor;
 
 /**
  * Applies the configured SQL migrations when the application starts.
@@ -27,44 +28,31 @@ public class SqlInitBootstrapper {
 
     private static final Logger LOGGER = Logger.getLogger(SqlInitBootstrapper.class.getName());
 
-    @Inject
-    @SqlInit
-    Instance<DataSource> qualifiedDataSource;
-
-    @Inject
-    Instance<DataSource> dataSource;
-
-    @Inject
-    Instance<SqlInitConfig> configs;
-
-    @Inject
-    Instance<ResourceResolver> resolvers;
-
-    public void onStartup(@Observes Startup event) {
-        run();
-    }
-
-    void run() {
+    public void onStartup(@Observes @Priority(Interceptor.Priority.APPLICATION + 500) Startup event) {
         DataSource ds = resolveDataSource();
         if (ds == null) {
             LOGGER.warning("No DataSource bean found, skipping SQL script initialization");
             return;
         }
-        SqlInitConfig config = configs.isResolvable() ? configs.get() : SqlInitConfig.defaults();
+        var configHandle = CDI.current().select(SqlInitConfig.class);
+        SqlInitConfig config = configHandle.isResolvable() ? configHandle.get() : SqlInitConfig.defaults();
         new DbMigrator(ds, config, resourceResolver()).migrate();
     }
 
     private DataSource resolveDataSource() {
-        if (!qualifiedDataSource.isUnsatisfied()) {
+        var qualifiedHandle = CDI.current().select(DataSource.class, SqlInit.Literal.INSTANCE);
+        if (qualifiedHandle.isResolvable()) {
             LOGGER.fine("Initializing the @SqlInit qualified DataSource");
-            return qualifiedDataSource.get();
+            return qualifiedHandle.get();
         }
-        return dataSource.isUnsatisfied() ? null : dataSource.get();
+        var defaultHandle = CDI.current().select(DataSource.class);
+        return defaultHandle.isResolvable() ? defaultHandle.get() : null;
     }
 
     ResourceResolver resourceResolver() {
         ResourceResolverRegistry registry = new ResourceResolverRegistry();
-        for (ResourceResolver resolver : resolvers) {
+        for (var handle : CDI.current().select(ResourceResolver.class).handles()) {
+            ResourceResolver resolver = handle.get();
             if (resolver.protocol() != null) {
                 registry.register(resolver.protocol(), resolver);
             }

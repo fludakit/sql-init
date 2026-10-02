@@ -5,12 +5,11 @@ import io.github.fludakit.sqlinit.version.DottedVersionStrategy;
 import io.github.fludakit.sqlinit.version.IntegerVersionStrategy;
 import io.github.fludakit.sqlinit.version.SemanticVersionStrategy;
 import io.github.fludakit.sqlinit.version.VersionStrategy;
+import org.eclipse.microprofile.config.inject.ConfigProperties;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Inject;
-
-import org.eclipse.microprofile.config.inject.ConfigProperties;
 
 /**
  * Produces the {@code @ApplicationScoped} {@link SqlInitConfig} bean from the
@@ -19,7 +18,8 @@ import org.eclipse.microprofile.config.inject.ConfigProperties;
 @ApplicationScoped
 public class SqlInitConfigProducer {
 
-    @Inject @ConfigProperties
+    @Inject
+    @ConfigProperties
     private SqlInitProperties properties;
 
     @Produces

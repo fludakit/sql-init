@@ -1,8 +1,10 @@
 package io.github.fludakit.sqlinit.cdi;
 
-import org.jboss.weld.junit5.auto.AddBeanClasses;
-import org.jboss.weld.junit5.auto.EnableAutoWeld;
+import org.jboss.weld.junit5.WeldInitiator;
+import org.jboss.weld.junit5.WeldJunit5Extension;
+import org.jboss.weld.junit5.WeldSetup;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
 import java.sql.SQLException;
 import java.util.List;
@@ -16,9 +18,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * Asserts the bootstrapper runs on the container's startup notification alone: nothing here calls
  * {@link SqlInitBootstrapper#run()}.
  */
-@EnableAutoWeld
-@AddBeanClasses({SqlInitBootstrapper.class, StartupDataSourceProducer.class})
+@ExtendWith(WeldJunit5Extension.class)
 class SqlInitStartupTest {
+
+    @WeldSetup
+    WeldInitiator setup = WeldInitiator
+            .from(SqlInitBootstrapper.class, StartupDataSourceProducer.class)
+            .build();
 
     @Inject
     DataSource dataSource;

@@ -19,7 +19,7 @@ public class SqlInitProperties {
     private String separator = ";";
 
     @ConfigProperty(name = "db-type")
-    private String dbType = "";
+    private String dbType;
 
     @ConfigProperty(name = "version-strategy")
     private String versionStrategy = "integer";
