@@ -117,6 +117,22 @@ public class ClassPathResourceResolver implements ResourceResolver {
         }
     }
 
+    /**
+     * Scans a WildFly VFS (Virtual File System) directory for resources.
+     *
+     * <p>WildFly uses a virtual file system for deployed applications. When resources are packaged
+     * in a WAR/EAR and deployed to WildFly, the classloader returns URLs with the {@code vfs:} protocol
+     * instead of {@code file:} or {@code jar:}. For example:</p>
+     *
+     * <pre>
+     * vfs:/D:/wildfly/standalone/deployments/app.war/WEB-INF/classes/db/migration/
+     * </pre>
+     *
+     * <p>These VFS URLs cannot be converted to {@link java.nio.file.Path} objects directly. Instead,
+     * we use WildFly's VFS API ({@code org.jboss.vfs.VirtualFile}) to traverse the virtual directory
+     * structure and read file contents. The VFS dependency is optional and only used when running on
+     * WildFly; on other application servers, this method is a no-op.</p>
+     */
     private void scanVfsDirectory(URL rootUrl, String relativePattern, List<Resource> resources) throws IOException {
         if (!isVfsPresent()) {
             return;

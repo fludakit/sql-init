@@ -21,7 +21,6 @@
         <dependency>
             <groupId>org.jboss</groupId>
             <artifactId>jboss-vfs</artifactId>
-            <version>3.3.2.Final</version>
             <optional>true</optional>
         </dependency>
         <dependency>
