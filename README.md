@@ -1,5 +1,7 @@
 # FluDa SQL Init
 
+[![Build](https://github.com/fludakit/sql-init/actions/workflows/build.yml/badge.svg)](https://github.com/fludakit/sql-init/actions/workflows/build.yml)
+
 Automated database schema management and data population on application startup for Jakarta EE / CDI applications.
 
 ## Modules
