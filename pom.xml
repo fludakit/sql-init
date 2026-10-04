@@ -46,7 +46,8 @@
     </modules>
 
     <properties>
-        <!-- Module-specific properties can be added here -->
+        <h2.version>2.5.252</h2.version>
+        <jboss-vfs.version>3.3.2.Final</jboss-vfs.version>
     </properties>
 
     <dependencyManagement>
@@ -66,6 +67,18 @@
                 <groupId>io.github.fludakit</groupId>
                 <artifactId>fluda-sql-init-cdi</artifactId>
                 <version>${project.version}</version>
+            </dependency>
+
+            <!-- SQL Init specific dependencies -->
+            <dependency>
+                <groupId>com.h2database</groupId>
+                <artifactId>h2</artifactId>
+                <version>${h2.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.jboss</groupId>
+                <artifactId>jboss-vfs</artifactId>
+                <version>${jboss-vfs.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
