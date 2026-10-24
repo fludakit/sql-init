@@ -1,5 +1,6 @@
 package io.github.fludakit.sqlinit.config;
 
+import io.github.fludakit.sqlinit.SqlInitConfig;
 import org.eclipse.microprofile.config.inject.ConfigProperties;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
@@ -13,10 +14,10 @@ import java.util.List;
 @ConfigProperties(prefix = "fluda.sqlinit")
 public class SqlInitProperties {
 
-    @ConfigProperty(name = "script-locations", defaultValue = "classpath:db/migration")
+    @ConfigProperty(name = "script-locations", defaultValue = SqlInitConfig.DEFAULT_SCRIPT_LOCATION)
     private List<String> scriptLocations;
 
-    @ConfigProperty(name = "separator", defaultValue = ";")
+    @ConfigProperty(name = "separator", defaultValue = SqlInitConfig.DEFAULT_SEPARATOR)
     private String separator;
 
     @ConfigProperty(name = "db-type")
