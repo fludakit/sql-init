@@ -14,8 +14,6 @@ import java.util.stream.Stream;
  */
 public class FileSystemResourceResolver implements ResourceResolver {
 
-    private static final String ALL_FILES = "**/*";
-
     private final PathMatcher pathMatcher;
 
     public FileSystemResourceResolver() {
@@ -49,13 +47,13 @@ public class FileSystemResourceResolver implements ResourceResolver {
             return List.of(new FileSystemResource(file));
         }
         if (Files.isDirectory(file)) {
-            return scanFilesystem(file, ALL_FILES);
+            return scanFilesystem(file, ResourceUtils.ALL_FILES);
         }
         return List.of();
     }
 
     private List<Resource> scanFilesystemPattern(String pattern) {
-        int rootEnd = wildcardRoot(pattern);
+        int rootEnd = ResourceUtils.wildcardRoot(pathMatcher, pattern);
         if (rootEnd == 0) {
             return List.of();
         }
@@ -83,21 +81,5 @@ public class FileSystemResourceResolver implements ResourceResolver {
         }
         resources.sort(Comparator.comparing(Resource::getFilename));
         return resources;
-    }
-
-    private int wildcardRoot(String pattern) {
-        int start = 0;
-        while (start < pattern.length()) {
-            int slash = pattern.indexOf('/', start);
-            String segment = slash < 0 ? pattern.substring(start) : pattern.substring(start, slash);
-            if (pathMatcher.isPattern(segment)) {
-                return start == 0 ? 0 : start - 1;
-            }
-            if (slash < 0) {
-                return pattern.length();
-            }
-            start = slash + 1;
-        }
-        return start;
     }
 }

@@ -2,9 +2,7 @@ package io.github.fludakit.sqlinit.resource;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.JarURLConnection;
 import java.net.URL;
-import java.net.URLConnection;
 
 /**
  * A {@link Resource} backed by a resolved {@link URL}, such as a classpath or jar entry.
@@ -20,11 +18,7 @@ public class UrlResource implements Resource {
     @Override
     public InputStream getInputStream() {
         try {
-            URLConnection connection = url.openConnection();
-            if (connection instanceof JarURLConnection jarConnection) {
-                jarConnection.setUseCaches(false);
-            }
-            return connection.getInputStream();
+            return ResourceUtils.openUncachedConnection(url).getInputStream();
         } catch (IOException e) {
             throw new ResourceException("Failed to open URL resource: " + url, e);
         }
@@ -38,11 +32,7 @@ public class UrlResource implements Resource {
     @Override
     public long contentLength() {
         try {
-            URLConnection connection = url.openConnection();
-            if (connection instanceof JarURLConnection jarConnection) {
-                jarConnection.setUseCaches(false);
-            }
-            return connection.getContentLengthLong();
+            return ResourceUtils.openUncachedConnection(url).getContentLengthLong();
         } catch (IOException e) {
             throw new ResourceException("Failed to read content length for URL: " + url, e);
         }

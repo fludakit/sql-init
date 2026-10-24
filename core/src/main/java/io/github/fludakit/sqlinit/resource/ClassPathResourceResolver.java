@@ -23,8 +23,6 @@ import java.util.stream.Stream;
  */
 public class ClassPathResourceResolver implements ResourceResolver {
 
-    private static final String ALL_FILES = "**/*";
-
     private final ClassLoader classLoader;
     private final PathMatcher pathMatcher;
 
@@ -62,7 +60,7 @@ public class ClassPathResourceResolver implements ResourceResolver {
         if (url != null && isFile(url)) {
             return List.of(new ClassPathResource(path, classLoader));
         }
-        return scanClasspath(path + "/" + ALL_FILES);
+        return scanClasspath(path + "/" + ResourceUtils.ALL_FILES);
     }
 
     private boolean isFile(URL url) {
@@ -71,8 +69,7 @@ public class ClassPathResourceResolver implements ResourceResolver {
                 return Files.isRegularFile(Paths.get(url.toURI()));
             }
             if ("jar".equals(url.getProtocol())) {
-                JarURLConnection connection = (JarURLConnection) url.openConnection();
-                connection.setUseCaches(false);
+                JarURLConnection connection = (JarURLConnection) ResourceUtils.openUncachedConnection(url);
                 try (JarFile jarFile = connection.getJarFile()) {
                     JarEntry entry = jarFile.getJarEntry(connection.getEntryName());
                     return entry != null && !entry.isDirectory();
@@ -85,7 +82,7 @@ public class ClassPathResourceResolver implements ResourceResolver {
     }
 
     private List<Resource> scanClasspath(String pattern) {
-        int rootEnd = wildcardRoot(pattern);
+        int rootEnd = ResourceUtils.wildcardRoot(pathMatcher, pattern);
         String root = pattern.substring(0, rootEnd);
         String entryPrefix = root.isEmpty() ? "" : root + "/";
         String relativePattern = pattern.substring(entryPrefix.length());
@@ -184,8 +181,7 @@ public class ClassPathResourceResolver implements ResourceResolver {
 
     private void scanJar(URL rootUrl, String entryPrefix, String relativePattern, List<Resource> resources)
             throws IOException, URISyntaxException {
-        JarURLConnection connection = (JarURLConnection) rootUrl.openConnection();
-        connection.setUseCaches(false);
+        JarURLConnection connection = (JarURLConnection) ResourceUtils.openUncachedConnection(rootUrl);
         URI jarUri = connection.getJarFileURL().toURI();
         try (JarFile jarFile = connection.getJarFile()) {
             Enumeration<JarEntry> entries = jarFile.entries();
@@ -210,21 +206,5 @@ public class ClassPathResourceResolver implements ResourceResolver {
         } catch (MalformedURLException e) {
             throw new ResourceException("Failed to convert path to URL: " + path, e);
         }
-    }
-
-    private int wildcardRoot(String pattern) {
-        int start = 0;
-        while (start < pattern.length()) {
-            int slash = pattern.indexOf('/', start);
-            String segment = slash < 0 ? pattern.substring(start) : pattern.substring(start, slash);
-            if (pathMatcher.isPattern(segment)) {
-                return start == 0 ? 0 : start - 1;
-            }
-            if (slash < 0) {
-                return pattern.length();
-            }
-            start = slash + 1;
-        }
-        return start;
     }
 }
