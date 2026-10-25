@@ -79,8 +79,29 @@ public class SqlInitConfig {
             return this;
         }
 
+        /**
+         * Sets the database type by name or alias (case-insensitive), e.g. {@code postgresql} or
+         * {@code pg}; {@code null} or blank means auto-detect from the connection.
+         *
+         * @throws IllegalArgumentException if the name is not a known database type — validated here
+         *                                  rather than at migration time
+         */
         public Builder dbType(String dbType) {
-            this.dbType = dbType;
+            if (dbType == null || dbType.isBlank()) {
+                this.dbType = null;
+            } else {
+                String trimmed = dbType.trim();
+                DbType.fromName(trimmed);
+                this.dbType = trimmed;
+            }
+            return this;
+        }
+
+        /**
+         * Sets the database type directly; {@code null} means auto-detect from the connection.
+         */
+        public Builder dbType(DbType dbType) {
+            this.dbType = dbType == null ? null : dbType.name();
             return this;
         }
 
