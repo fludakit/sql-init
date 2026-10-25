@@ -17,7 +17,6 @@
  * // Or configure custom locations
  * SqlInitConfig config = SqlInitConfig.builder()
  *     .scriptLocations("classpath:/sql/migrations", "filesystem:/opt/migrations")
- *     .historyTable("schema_version")
  *     .build();
  * DbMigrator migrator = new DbMigrator(dataSource, config);
  * migrator.migrate();
@@ -36,9 +35,9 @@
  * <h2>Key Components</h2>
  * <ul>
  *   <li>{@link io.github.fludakit.sqlinit.DbMigrator} — Main API for running migrations</li>
- *   <li>{@link io.github.fludakit.sqlinit.SqlInitConfig} — Configuration for script locations and history table</li>
- *   <li>{@link io.github.fludakit.sqlinit.Migration} — Represents a resolved migration script</li>
- *   <li>{@link io.github.fludakit.sqlinit.MigrationHistory} — Tracks applied migrations</li>
+ *   <li>{@link io.github.fludakit.sqlinit.SqlInitConfig} — Configuration for script locations, statement separator, and version strategy</li>
+ *   <li>{@code Migration} — Represents a resolved migration script</li>
+ *   <li>{@code MigrationHistory} — Tracks applied migrations in the {@code db_migrations} history table</li>
  *   <li>{@link io.github.fludakit.sqlinit.resource.ResourceResolver} — Resolves scripts from classpath, filesystem, or URLs</li>
  * </ul>
  *
@@ -53,12 +52,11 @@
  * </ul>
  *
  * <h2>Migration History</h2>
- * <p>Applied migrations are tracked in a history table (default: {@code schema_migrations}).
+ * <p>Applied migrations are tracked in a history table (default: {@code db_migrations}).
  * Each row records the version, script name, status (running/succeeded/failed), and execution
  * timestamp. The table is created automatically on first use.</p>
  *
  * @see io.github.fludakit.sqlinit.DbMigrator
  * @see io.github.fludakit.sqlinit.SqlInitConfig
- * @see io.github.fludakit.sqlinit.Migration
  */
 package io.github.fludakit.sqlinit;
