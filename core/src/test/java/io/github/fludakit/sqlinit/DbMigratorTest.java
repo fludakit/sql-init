@@ -55,7 +55,7 @@ class DbMigratorTest {
 
         assertThrows(SqlInitException.class, () -> new DbMigrator(dataSource, config).migrate());
 
-        assertEquals(List.of("failed"), query(dataSource, "SELECT status FROM db_migrations WHERE version = 1"));
+        assertEquals(List.of("failed"), query(dataSource, "SELECT status FROM db_migrations WHERE version = '1'"));
         assertEquals(List.of("0"), query(dataSource, "SELECT CAST(COUNT(*) AS VARCHAR) FROM ok_table"));
     }
 
@@ -63,17 +63,16 @@ class DbMigratorTest {
     void rerunsAFailedMigration() {
         DataSource dataSource = h2("retry-failed");
         try (Connection connection = dataSource.getConnection(); Statement statement = connection.createStatement()) {
-            statement.execute("CREATE TABLE db_migrations (version INT PRIMARY KEY, description VARCHAR(200), "
-                    + "script VARCHAR(500), status VARCHAR(16), installed_on TIMESTAMP, error_message VARCHAR(1000))");
+            statement.execute(initSql());
             statement.execute("INSERT INTO db_migrations (version, description, script, status, installed_on, error_message) "
-                    + "VALUES (1, 'create', 'V1__create.sql', 'failed', CURRENT_TIMESTAMP, 'boom')");
+                    + "VALUES ('1', 'create', 'V1__create.sql', 'failed', CURRENT_TIMESTAMP, 'boom')");
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
 
         new DbMigrator(dataSource).migrate();
 
-        assertEquals(List.of("succeeded"), query(dataSource, "SELECT status FROM db_migrations WHERE version = 1"));
+        assertEquals(List.of("succeeded"), query(dataSource, "SELECT status FROM db_migrations WHERE version = '1'"));
         assertEquals(List.of("V2", "V3"), query(dataSource, "SELECT script FROM applied_scripts ORDER BY seq"));
     }
 
@@ -81,17 +80,16 @@ class DbMigratorTest {
     void rerunsALeftoverRunningMigration() {
         DataSource dataSource = h2("retry-running");
         try (Connection connection = dataSource.getConnection(); Statement statement = connection.createStatement()) {
-            statement.execute("CREATE TABLE db_migrations (version INT PRIMARY KEY, description VARCHAR(200), "
-                    + "script VARCHAR(500), status VARCHAR(16), installed_on TIMESTAMP, error_message VARCHAR(1000))");
+            statement.execute(initSql());
             statement.execute("INSERT INTO db_migrations (version, description, script, status, installed_on) "
-                    + "VALUES (1, 'create', 'V1__create.sql', 'running', CURRENT_TIMESTAMP)");
+                    + "VALUES ('1', 'create', 'V1__create.sql', 'running', CURRENT_TIMESTAMP)");
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
 
         new DbMigrator(dataSource).migrate();
 
-        assertEquals(List.of("succeeded"), query(dataSource, "SELECT status FROM db_migrations WHERE version = 1"));
+        assertEquals(List.of("succeeded"), query(dataSource, "SELECT status FROM db_migrations WHERE version = '1'"));
         assertEquals(List.of("V2", "V3"), query(dataSource, "SELECT script FROM applied_scripts ORDER BY seq"));
     }
 
@@ -105,6 +103,15 @@ class DbMigratorTest {
         SqlInitException e = assertThrows(SqlInitException.class, () -> new DbMigrator(dataSource, config).migrate());
 
         assertTrue(e.getMessage().contains("Duplicate migration version"));
+    }
+
+    /** The exact history-table DDL the manager creates at runtime (DbType.H2). */
+    private static String initSql() {
+        try (var in = DbType.class.getClassLoader().getResourceAsStream(DbType.H2.initSqlResource())) {
+            return new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+        } catch (java.io.IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private static DataSource h2(String database) {
