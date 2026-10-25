@@ -37,4 +37,40 @@ public interface VersionStrategy {
     static VersionStrategy defaultStrategy() {
         return IntegerVersionStrategy.INSTANCE;
     }
+
+    /**
+     * Resolves a strategy from a configured name: {@code int}/{@code integer} (default),
+     * {@code dotted}, {@code semantic}/{@code semver}, or the fully-qualified class name of a
+     * custom implementation with a no-arg constructor. {@code null} or blank yields the default.
+     *
+     * @throws IllegalArgumentException if the name matches no built-in strategy and the class
+     *                                  cannot be loaded, does not implement {@code VersionStrategy},
+     *                                  or cannot be instantiated
+     */
+    static VersionStrategy fromName(String value) {
+        if (value == null || value.isBlank()) {
+            return defaultStrategy();
+        }
+
+        String normalized = value.trim().toLowerCase(java.util.Locale.ROOT);
+        return switch (normalized) {
+            case "int", "integer" -> IntegerVersionStrategy.INSTANCE;
+            case "dotted" -> DottedVersionStrategy.INSTANCE;
+            case "semantic", "semver" -> SemanticVersionStrategy.INSTANCE;
+            default -> instantiate(value.trim());
+        };
+    }
+
+    private static VersionStrategy instantiate(String className) {
+        try {
+            Class<?> clazz = Class.forName(className);
+            if (!VersionStrategy.class.isAssignableFrom(clazz)) {
+                throw new IllegalArgumentException(
+                        "Class " + className + " does not implement VersionStrategy");
+            }
+            return (VersionStrategy) clazz.getDeclaredConstructor().newInstance();
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalArgumentException("Failed to instantiate custom VersionStrategy: " + className, e);
+        }
+    }
 }
