@@ -24,7 +24,7 @@ new DbMigrator(dataSource).migrate();
 
 In a CDI environment, add `fluda-sql-init-cdi` and migrations run automatically on application startup — no code required.
 
-For script naming, configuration properties, custom version strategies, and resource resolvers, see the [SQL Init documentation](https://fludakit.github.io/documentation/sql-init/getting-started/).
+For script naming, configuration properties, custom version strategies, and resource resolvers, see the [SQL Init documentation](https://fludakit.github.io/sql-init/getting-started/).
 
 ## Building
 
@@ -34,7 +34,7 @@ For script naming, configuration properties, custom version strategies, and reso
 
 ## Documentation
 
-See the [reference documentation site](https://fludakit.github.io/documentation/sql-init/getting-started/) for getting started, advanced topics, and full API reference.
+See the [reference documentation site](https://fludakit.github.io/sql-init/getting-started/) for getting started, advanced topics, and full API reference.
 
 ## Contributing
 
