@@ -44,3 +44,8 @@ The database type is auto-detected from the connection metadata. It can also be 
 - [Version Strategy](version-strategy.md) — how migration versions are parsed and ordered.
 
 - [Resource Resolver](resource-resolver.md) — how script locations are resolved.
+
+
+---
+
+[FluDa Toolkit — browse all modules](https://fludakit.github.io/){ .md-button .md-button--primary }

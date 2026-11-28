@@ -11,15 +11,15 @@ theme:
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default
-      primary: custom
-      accent: amber
+      primary: teal
+      accent: lime
       toggle:
         icon: material/brightness-7
         name: Switch to dark mode
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
-      primary: custom
-      accent: amber
+      primary: teal
+      accent: lime
       toggle:
         icon: material/brightness-4
         name: Switch to light mode
@@ -71,4 +71,3 @@ nav:
   - Getting Started: getting-started.md
   - Version Strategy: version-strategy.md
   - Resource Resolver: resource-resolver.md
-  - FluDa Toolkit: https://fludakit.github.io/
